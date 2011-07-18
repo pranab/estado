@@ -1,0 +1,39 @@
+Introduction
+============
+Estado is a small java application that collects Hadoop job status including counters. Ultimate
+goal is to collect all job statistics from all Hadoop clusters and collect them in a central 
+repository for further analysis, dash board and alerting. 
+
+Architecture
+============
+Estado should be setup as a cron job one for each cluster. it could run in any Hadoop node in
+a given cluster. 
+
+There is a pluggable status consumer, that consumes status data and does whatever it wants to do.
+Typically, the consumer will write the status data in one central database, so that all Hadoop job
+status data is consolidated in one place.
+
+There is a default JobStatusConsoleConsumer class already included, that simply writes the data to 
+console. In future, I will provide pluggable consumers for file and RDBMS.
+
+Configuration
+=============
+The configuration is very simple. Here is an example.
+
+cluster.name=default
+status.filter=srfpk
+consumer.console.class=org.estado.spi.JobStatusConsoleConsumer
+
+Each hadoop cluster should be given an unique name. The filter parameter provides a list of job statuses
+to be used as filter, where s=succedded r=running f=failed p=preparing and k=killed
+
+The last line provides the consumer class name. The second component of the property
+name is a name (e.g., console) for the consumer. Some consumers may need additional parameters. Here is 
+an example for a file consumer.
+
+consumer.file.class=org.estado.spi.JobStatusFileConsumer
+consumer.file.name=/var/log/estado.log
+
+
+
+
