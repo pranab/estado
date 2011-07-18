@@ -2,7 +2,8 @@ Introduction
 ============
 Estado is a small java application that collects Hadoop job status including counters. Ultimate
 goal is to collect all job statistics from all Hadoop clusters and collect them in a central 
-repository for further analysis, dash board and alerting. 
+repository for further analysis, dash board and alerting. Example of an alert might be certain 
+counter exceeding some threshold.
 
 Architecture
 ============
@@ -33,6 +34,47 @@ an example for a file consumer.
 
 consumer.file.class=org.estado.spi.JobStatusFileConsumer
 consumer.file.name=/var/log/estado.log
+
+Sample Output
+=============
+Here is some sample output for console consumer.
+
+Cluster:default
+Job Id:job_201107171959_0001
+User:pranab
+Start time:2011-07-17 08:04:03
+End time:2011-07-17 08:06:20
+Duration:02min:17sec:230ms
+Map progress:100
+Reduce progress:100
+Status:completed
+
+Counter group:Job Counters
+	Launched reduce tasks=1
+	SLOTS_MILLIS_MAPS=81621
+	Total time spent by all reduces waiting after reserving slots (ms)=0
+	Total time spent by all maps waiting after reserving slots (ms)=0
+	Launched map tasks=1
+	Data-local map tasks=1
+	SLOTS_MILLIS_REDUCES=52691
+Counter group:FileSystemCounters
+	FILE_BYTES_READ=349
+	HDFS_BYTES_READ=25157
+	FILE_BYTES_WRITTEN=115394
+	HDFS_BYTES_WRITTEN=331
+Counter group:Map-Reduce Framework
+	Reduce input groups=2
+	Combine output records=2
+	Map input records=1000
+	Reduce shuffle bytes=349
+	Reduce output records=2
+	Spilled Records=4
+	Map output bytes=19776
+	Combine input records=2000
+	Map output records=2000
+	SPLIT_RAW_BYTES=111
+	Reduce input records=2
+
 
 
 
