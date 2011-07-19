@@ -1,6 +1,18 @@
 /*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ * Estado: Muti cluster Hadoop job status metric collector
+ * Author: Pranab Ghosh
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You may
+ * obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0 
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License.
  */
 
 package org.estado.spi;
@@ -44,6 +56,8 @@ public class JobStatusConsoleConsumer implements JobStatusConsumer {
 	        System.out.println("\nJob:  " + count);
 	        System.out.println("Cluster:" + jobStatus.getCluster());
 	        System.out.println("Job Id:" + jobStatus.getJobId());
+	        System.out.println("Job name:" + jobStatus.getJobName() != null ? jobStatus.getJobName() : "");
+	        System.out.println("Notes:" + jobStatus.getNotes() != null ? jobStatus.getNotes() : "");
 	        System.out.println("User:" + jobStatus.getUser());
 	        System.out.println("Start time:" + startTime);
 	        System.out.println("End time:" + endTime);

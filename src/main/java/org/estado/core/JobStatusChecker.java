@@ -1,6 +1,18 @@
 /*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ * Estado: Muti cluster Hadoop job status metric collector
+ * Author: Pranab Ghosh
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You may
+ * obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0 
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License.
  */
 
 package org.estado.core;
@@ -83,7 +95,7 @@ public class JobStatusChecker {
                     case JobStatus.SUCCEEDED:
                         if (filter.contains("s")){
                             Long duration = lastTaskEndTime - jobStatus.getStartTime();
-                            jobStat = new org.estado.spi.JobStatus(cluster, jobId, user, startTime, lastTaskEndTime,  
+                            jobStat = new org.estado.spi.JobStatus(cluster, jobId, null, null, user, startTime, lastTaskEndTime,  
                             		duration, mapProgress, reduceProgress, "completed");
                             ++sCount;
                         }
@@ -92,7 +104,7 @@ public class JobStatusChecker {
                     case JobStatus.RUNNING:
                         if (filter.contains("r")){
                             long duration = System.currentTimeMillis() - jobStatus.getStartTime();
-                            jobStat = new org.estado.spi.JobStatus(cluster, jobId, user, startTime,  
+                            jobStat = new org.estado.spi.JobStatus(cluster, jobId, null, null, user, startTime,  
                             		lastTaskEndTime,  duration, mapProgress, reduceProgress,"running");
                             ++rCount;
                         }
@@ -101,7 +113,7 @@ public class JobStatusChecker {
                     case JobStatus.FAILED:
                         if (filter.contains("f")){
                             long duration = lastTaskEndTime - jobStatus.getStartTime();
-                            jobStat = new org.estado.spi.JobStatus(cluster, jobId, user, startTime,
+                            jobStat = new org.estado.spi.JobStatus(cluster, jobId, null, null, user, startTime,
                             		lastTaskEndTime,  duration, mapProgress, reduceProgress, "failed");
                             ++fCount;
                         }
@@ -109,7 +121,7 @@ public class JobStatusChecker {
 
                     case JobStatus.PREP:
                         if (filter.contains("p")){
-                            jobStat = new org.estado.spi.JobStatus(cluster, jobId, user, null,
+                            jobStat = new org.estado.spi.JobStatus(cluster, jobId, null, null, user, null,
                             		null,  null, 0, 0, "preparing");
                             ++pCount;
                         }
@@ -118,7 +130,7 @@ public class JobStatusChecker {
                     case JobStatus.KILLED:
                         if (filter.contains("k")){
                             long duration = lastTaskEndTime - jobStatus.getStartTime();
-                            jobStat = new org.estado.spi.JobStatus(cluster, jobId, user, startTime,
+                            jobStat = new org.estado.spi.JobStatus(cluster, jobId, null, null, user, startTime,
                             		lastTaskEndTime,  duration, mapProgress, reduceProgress, "killed");
                             ++kCount;
                         }
@@ -133,6 +145,9 @@ public class JobStatusChecker {
             	if (!jobStat.getStatus().equals("preparing")){
             		List<JobCounterGroup>  counterGroups = getJobCounters(jobStat.getJobId());
             		jobStat.setCounterGroups(counterGroups);
+            		
+            		//additional data from counters
+            		setJobInfo(jobStat);
             	}
             }
             
@@ -231,6 +246,28 @@ public class JobStatusChecker {
         }
         
     	return counterGroups;
+    }
+    
+    
+    private void setJobInfo(org.estado.spi.JobStatus jobStat){
+    	List<JobCounterGroup>  counterGroups = jobStat.getCounterGroups();
+    	
+    	String[] items = null;
+    	for (JobCounterGroup counterGroup : counterGroups){
+    		if (counterGroup.getName().equals("JobInfo")) {
+    			for (JobCounterGroup.JobCounter counter : counterGroup.getJobCounters()){
+    				if (counter.getName().startsWith("jobName")){
+    					items = counter.getName().split(":");
+    					jobStat.setJobName(items[1]);
+    				}
+    				if (counter.getName().startsWith("notes")){
+    					items = counter.getName().split(":");
+    					jobStat.setNotes(items[1]);
+    				}
+    			}
+    			break;
+    		}
+    	}
     }
 
     public static void main(String[] args){

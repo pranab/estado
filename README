@@ -35,6 +35,16 @@ an example for a file consumer.
 consumer.file.class=org.estado.spi.JobStatusFileConsumer
 consumer.file.name=/var/log/estado.log
 
+Execution
+=========
+Here is a sample script to run estado
+
+JAR=/home/pranab/.m2/repository/mawazo/estado/1.0/estado-1.0.jar
+CL=org.estado.core.JobStatusChecker
+CONFIG=/home/pranab/Projects/run/estado/estado.properties
+hadoop jar $JAR $CL $CONFIG
+
+
 Sample Output
 =============
 Here is some sample output for console consumer.
