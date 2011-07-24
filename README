@@ -35,6 +35,11 @@ an example for a file consumer.
 consumer.file.class=org.estado.spi.JobStatusFileConsumer
 consumer.file.name=/var/log/estado.log
 
+Here is the configuration for an RDBMS cosumer using JDBC
+
+consumer.rdbms.class=org.estado.spi.JobStatusRdbmsConsumer
+consumer.rdbms.url=jdbc:mysql://localhost/starea?user=admin&password=welcome
+
 Execution
 =========
 Here is a sample script to run estado
