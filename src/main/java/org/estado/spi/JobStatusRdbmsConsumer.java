@@ -22,6 +22,7 @@ import java.sql.Connection;
 import java.sql.Date;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 import java.sql.Timestamp;
@@ -29,25 +30,37 @@ import java.sql.Timestamp;
 public class JobStatusRdbmsConsumer implements JobStatusConsumer {
 
 	private String url;
-	
+	private Connection connect;
+	private PreparedStatement crPrepStmt;
+	private PreparedStatement selPrepStmt;
+	private Long id;
+	private String curStatus;
+	private PreparedStatement cntCrPrepStmt;
+	private ResultSet reSet;
+
 	@Override
 	public void handle(List<JobStatus> jobStatuses) {
-		Connection connect = null;
-		PreparedStatement crPrepStmt = null;
 		try {
 			//load the driver and get connection
 			Class.forName("com.mysql.jdbc.Driver");
 			connect = DriverManager.getConnection(url);
+			connect.setAutoCommit(false);
+			
 			String stmt = "insert into  jobs(jobid,cluster,user,start_time,end_time,duration,name,status,notes,estimated_time,created_at,updated_at)" +
 				" values(?,?,?,?,?,?,?,?,?,?,?,?)";
 			crPrepStmt = connect.prepareStatement(stmt);
+			selPrepStmt = connect.prepareStatement("select id, status from jobs where cluster=? and jobid=?");
+			cntCrPrepStmt = connect.prepareStatement("insert into metrics(context,type,name,value,job_id,created_at,updated_at) values(?,?,?,?,?,?,?)");
+			
 			Timestamp curDateTime = new Timestamp(System.currentTimeMillis());
 			
+			int count = 1;
 	        for (JobStatus jobStatus : jobStatuses){
+				System.out.println("job: " + count);
 	        	String jobId = jobStatus.getJobId();
 	        	String cluster = jobStatus.getCluster();
-	        	String status = getJobStatus(cluster, jobId);
-	        	if (null == status){
+	        	getJob(cluster, jobId);
+	        	if (null == id){
 	        		//insert
 		        	crPrepStmt.setString(1, jobId);
 		        	crPrepStmt.setString(2, cluster);
@@ -61,36 +74,69 @@ public class JobStatusRdbmsConsumer implements JobStatusConsumer {
 		        	crPrepStmt.setString(10, null);
 		        	crPrepStmt.setTimestamp(11, curDateTime);
 		        	crPrepStmt.setTimestamp(12, curDateTime);
-		        	
 		        	crPrepStmt.executeUpdate();
+					System.out.println("job saved");
+
+		        	getJob(cluster, jobId);
+		        	
+		        	cntCrPrepStmt.setString(1, "job");
+		        	cntCrPrepStmt.setLong(5, id);
+		        	for(JobCounterGroup cntGrp : jobStatus.getCounterGroups()) {
+			        	cntCrPrepStmt.setString(2, cntGrp.getName());
+			        	for (JobCounterGroup.JobCounter cnt  : cntGrp.getJobCounters()) {
+				        	cntCrPrepStmt.setString(3, cnt.getName());
+				        	cntCrPrepStmt.setLong(4, cnt.getValue());
+				        	cntCrPrepStmt.setTimestamp(6, curDateTime);
+				        	cntCrPrepStmt.setTimestamp(7, curDateTime);
+				        	cntCrPrepStmt.executeUpdate();
+			        	}
+		        	}
+					System.out.println("job counters saved");
+					++count;
 	        	} else {
 	        		//update
 	        		
 	        	}
 	        }
 			connect.commit();
-	        
-			
 		} catch (Exception ex) {
-			System.out.println("Failed in rdbms consumer" + ex);
+			try {
+				connect.rollback();
+			} catch (SQLException sqEx) {
+				System.out.println("Exception rolling back" + sqEx);
+			}
+			System.err.println("Failed in rdbms consumer: " + ex);
 		} finally {
 			try {
-			if (null != crPrepStmt){
-				crPrepStmt.close();
-			}
-			if (null != connect){
-				connect.close();
-			}
+				if (null != reSet){
+					reSet.close();
+				}
+				if (null != selPrepStmt){
+					crPrepStmt.close();
+				}
+				if (null != crPrepStmt){
+					crPrepStmt.close();
+				}
+				if (null != connect){
+					connect.close();
+				}
 			} catch (SQLException sqEx){
 				System.out.println("Exception closing db resource" + sqEx);
 			}
 		}
 	}
 	
-	private String getJobStatus(String cluster, String jobId){
-		String status = null;
-		
-		return status;
+	private void getJob(String cluster, String jobId) throws Exception{
+		reSet = null;
+        id = null;
+		curStatus = null;
+		selPrepStmt.setString(1, cluster);
+		selPrepStmt.setString(2, jobId);
+		reSet = selPrepStmt.executeQuery();
+		if (reSet.next()) {
+			id = reSet.getLong(1);
+			curStatus = reSet.getString(2);
+		}
 	}
 
 	public String getUrl() {
