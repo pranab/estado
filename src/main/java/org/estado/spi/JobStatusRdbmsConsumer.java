@@ -46,11 +46,11 @@ public class JobStatusRdbmsConsumer implements JobStatusConsumer {
 			connect = DriverManager.getConnection(url);
 			connect.setAutoCommit(false);
 			
-			String stmt = "insert into  jobs(jobid,cluster,user,start_time,end_time,duration,name,status,notes,estimated_time,created_at,updated_at)" +
-				" values(?,?,?,?,?,?,?,?,?,?,?,?)";
+			String stmt = "insert into  jobs(jobid,cluster,user,start_time,end_time,duration,name,status,notes,estimated_time,map_progress,reduce_progress,created_at,updated_at)" +
+				" values(?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 			crPrepStmt = connect.prepareStatement(stmt);
 			selPrepStmt = connect.prepareStatement("select id, status from jobs where cluster=? and jobid=?");
-			cntCrPrepStmt = connect.prepareStatement("insert into metrics(context,type,name,value,job_id,created_at,updated_at) values(?,?,?,?,?,?,?)");
+			cntCrPrepStmt = connect.prepareStatement("insert into metrics(context,category,name,value,job_id,created_at,updated_at) values(?,?,?,?,?,?,?)");
 			
 			Timestamp curDateTime = new Timestamp(System.currentTimeMillis());
 			
@@ -72,8 +72,10 @@ public class JobStatusRdbmsConsumer implements JobStatusConsumer {
 		        	crPrepStmt.setString(8, jobStatus.getStatus());
 		        	crPrepStmt.setString(9, jobStatus.getNotes());
 		        	crPrepStmt.setString(10, null);
-		        	crPrepStmt.setTimestamp(11, curDateTime);
-		        	crPrepStmt.setTimestamp(12, curDateTime);
+		        	crPrepStmt.setLong(11, jobStatus.getMapProgress());
+		        	crPrepStmt.setLong(12, jobStatus.getReduceProgress());
+		        	crPrepStmt.setTimestamp(13, curDateTime);
+		        	crPrepStmt.setTimestamp(14, curDateTime);
 		        	crPrepStmt.executeUpdate();
 					System.out.println("job saved");
 
