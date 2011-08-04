@@ -36,7 +36,9 @@ public class JobStatusRdbmsConsumer implements JobStatusConsumer {
 	private Long id;
 	private String curStatus;
 	private PreparedStatement cntCrPrepStmt;
+	private PreparedStatement cntDelPrepStmt;
 	private ResultSet reSet;
+	private PreparedStatement upPrepStmt;
 
 	@Override
 	public void handle(List<JobStatus> jobStatuses) {
@@ -51,6 +53,9 @@ public class JobStatusRdbmsConsumer implements JobStatusConsumer {
 			crPrepStmt = connect.prepareStatement(stmt);
 			selPrepStmt = connect.prepareStatement("select id, status from jobs where cluster=? and jobid=?");
 			cntCrPrepStmt = connect.prepareStatement("insert into metrics(context,category,name,value,job_id,created_at,updated_at) values(?,?,?,?,?,?,?)");
+			String upStmt = "update jobs set start_time=?, end_time=?, duration=?, status=?, map_progress=?, reduce_progress=?, update_at=? where id=?";
+			upPrepStmt = connect.prepareStatement(upStmt);
+			cntDelPrepStmt = connect.prepareStatement("delete from metrics where job_id=?");
 			
 			Timestamp curDateTime = new Timestamp(System.currentTimeMillis());
 			
@@ -61,7 +66,7 @@ public class JobStatusRdbmsConsumer implements JobStatusConsumer {
 	        	String cluster = jobStatus.getCluster();
 	        	getJob(cluster, jobId);
 	        	if (null == id){
-	        		//insert
+	        		//create job
 		        	crPrepStmt.setString(1, jobId);
 		        	crPrepStmt.setString(2, cluster);
 		        	crPrepStmt.setString(3, jobStatus.getUser());
@@ -79,25 +84,28 @@ public class JobStatusRdbmsConsumer implements JobStatusConsumer {
 		        	crPrepStmt.executeUpdate();
 					System.out.println("job saved");
 
+					//create counters
 		        	getJob(cluster, jobId);
+		        	createCounters(jobStatus, curDateTime);
 		        	
-		        	cntCrPrepStmt.setString(1, "job");
-		        	cntCrPrepStmt.setLong(5, id);
-		        	for(JobCounterGroup cntGrp : jobStatus.getCounterGroups()) {
-			        	cntCrPrepStmt.setString(2, cntGrp.getName());
-			        	for (JobCounterGroup.JobCounter cnt  : cntGrp.getJobCounters()) {
-				        	cntCrPrepStmt.setString(3, cnt.getName());
-				        	cntCrPrepStmt.setLong(4, cnt.getValue());
-				        	cntCrPrepStmt.setTimestamp(6, curDateTime);
-				        	cntCrPrepStmt.setTimestamp(7, curDateTime);
-				        	cntCrPrepStmt.executeUpdate();
-			        	}
-		        	}
 					System.out.println("job counters saved");
 					++count;
 	        	} else {
-	        		//update
+	        		//update job
+	        		upPrepStmt.setTimestamp(1, new Timestamp(jobStatus.getStartTime()));
+	        		upPrepStmt.setTimestamp(2, new Timestamp(jobStatus.getEndTime()));
+	        		upPrepStmt.setLong(3, jobStatus.getDuration());
+	        		upPrepStmt.setString(4, jobStatus.getStatus());
+	        		upPrepStmt.setLong(5, jobStatus.getMapProgress());
+	        		upPrepStmt.setLong(6, jobStatus.getReduceProgress());
+	        		upPrepStmt.setTimestamp(7, curDateTime);
+	        		upPrepStmt.setLong(8, id);
+	        		upPrepStmt.executeUpdate();
 	        		
+	        		//delete and create counters
+	        		cntDelPrepStmt.setLong(1, id);
+	        		cntDelPrepStmt.executeUpdate();
+	        		createCounters(jobStatus, curDateTime);
 	        	}
 	        }
 			connect.commit();
@@ -119,6 +127,15 @@ public class JobStatusRdbmsConsumer implements JobStatusConsumer {
 				if (null != crPrepStmt){
 					crPrepStmt.close();
 				}
+				if (null != upPrepStmt){
+					upPrepStmt.close();
+				}
+				if (null != cntCrPrepStmt){
+					cntCrPrepStmt.close();
+				}
+				if (null != cntDelPrepStmt){
+					cntDelPrepStmt.close();
+				}
 				if (null != connect){
 					connect.close();
 				}
@@ -139,6 +156,22 @@ public class JobStatusRdbmsConsumer implements JobStatusConsumer {
 			id = reSet.getLong(1);
 			curStatus = reSet.getString(2);
 		}
+	}
+	
+	private void createCounters(JobStatus jobStatus, Timestamp curDateTime) throws Exception {
+    	cntCrPrepStmt.setString(1, "job");
+    	cntCrPrepStmt.setLong(5, id);
+    	for(JobCounterGroup cntGrp : jobStatus.getCounterGroups()) {
+        	cntCrPrepStmt.setString(2, cntGrp.getName());
+        	for (JobCounterGroup.JobCounter cnt  : cntGrp.getJobCounters()) {
+	        	cntCrPrepStmt.setString(3, cnt.getName());
+	        	cntCrPrepStmt.setLong(4, cnt.getValue());
+	        	cntCrPrepStmt.setTimestamp(6, curDateTime);
+	        	cntCrPrepStmt.setTimestamp(7, curDateTime);
+	        	cntCrPrepStmt.executeUpdate();
+        	}
+    	}
+
 	}
 
 	public String getUrl() {
